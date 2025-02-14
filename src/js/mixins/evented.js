@@ -6,10 +6,8 @@ import window from 'global/window';
 import * as Dom from '../utils/dom';
 import * as Events from '../utils/events';
 import * as Fn from '../utils/fn';
-import * as Obj from '../utils/obj';
 import EventTarget from '../event-target';
 import DomData from '../utils/dom-data';
-import log from '../utils/log';
 
 const objName = (obj) => {
   if (typeof obj.name === 'function') {
@@ -48,7 +46,7 @@ const isEvented = (object) =>
 /**
  * Adds a callback to run after the evented mixin applied.
  *
- * @param  {Object} object
+ * @param  {Object} target
  *         An object to Add
  * @param  {Function} callback
  *         The callback to run.
@@ -184,14 +182,19 @@ const normalizeListenArgs = (self, args, fnName) => {
 
     [type, listener] = args;
   } else {
-    [target, type, listener] = args;
+    // This was `[target, type, listener] = args;` but this block needs more than
+    // one statement to produce minified output compatible with Chrome 53.
+    // See https://github.com/videojs/video.js/pull/8810
+    target = args[0];
+    type = args[1];
+    listener = args[2];
   }
 
   validateTarget(target, self, fnName);
   validateEventType(type, self, fnName);
   validateListener(listener, self, fnName);
 
-  listener = Fn.bind(self, listener);
+  listener = Fn.bind_(self, listener);
 
   return {isTargetingSelf, target, type, listener};
 };
@@ -317,7 +320,7 @@ const EventedMixin = {
     } else {
       // TODO: This wrapper is incorrect! It should only
       //       remove the wrapper for the event type that called it.
-      //       Instead all listners are removed on the first trigger!
+      //       Instead all listeners are removed on the first trigger!
       //       see https://github.com/videojs/video.js/issues/5962
       const wrapper = (...largs) => {
         this.off(target, type, wrapper);
@@ -412,7 +415,7 @@ const EventedMixin = {
       validateListener(listener, this, 'off');
 
       // Ensure there's at least a guid, even if the function hasn't been used
-      listener = Fn.bind(this, listener);
+      listener = Fn.bind_(this, listener);
 
       // Remove the dispose listener on this evented object, which was given
       // the same guid as the event listener in on().
@@ -446,14 +449,8 @@ const EventedMixin = {
     const type = event && typeof event !== 'string' ? event.type : event;
 
     if (!isValidEventType(type)) {
-      const error = `Invalid event type for ${objName(this)}#trigger; ` +
-        'must be a non-empty string or object with a type key that has a non-empty value.';
-
-      if (event) {
-        (this.log || log).error(error);
-      } else {
-        throw new Error(error);
-      }
+      throw new Error(`Invalid event type for ${objName(this)}#trigger; ` +
+        'must be a non-empty string or object with a type key that has a non-empty value.');
     }
     return Events.trigger(this.eventBusEl_, event, hash);
   }
@@ -489,7 +486,7 @@ function evented(target, options = {}) {
     target.eventBusEl_ = Dom.createEl('span', {className: 'vjs-event-bus'});
   }
 
-  Obj.assign(target, EventedMixin);
+  Object.assign(target, EventedMixin);
 
   if (target.eventedCallbacks) {
     target.eventedCallbacks.forEach((callback) => {

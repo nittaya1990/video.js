@@ -11,21 +11,25 @@ jobs:
     env:
       NETLIFY_BASE: 'videojs-preview.netlify.app'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write      # Required for provenance
+      packages: write      # Required for publishing
     steps:
       - name: Checkout
-        uses: actions/checkout@v2
-        # We neeed to fetch the entire history as conventional-changelog needs
+        uses: actions/checkout@v3
+        # We need to fetch the entire history as conventional-changelog needs
         # access to any number of git commits to build the changelog.
         with:
           fetch-depth: 0
 
       - name: read node version from .nvmrc
-        run: echo ::set-output name=NVMRC::$(cat .nvmrc)
+        run: echo "NVMRC=$(cat .nvmrc)" >> $GITHUB_OUTPUT
         shell: bash
         id: nvm
 
       - name: setup node
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v3
         with:
           node-version: '${{steps.nvm.outputs.NVMRC}}'
           cache: npm
@@ -37,7 +41,7 @@ jobs:
 
       # publish runs build for us via a prepublishOnly script
       - name: npm release
-        run: npm publish --tag next
+        run: npm publish --provenance --tag next
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
@@ -45,7 +49,7 @@ jobs:
         run: node -e "console.log(require('./build/current-changelog.js')())" > CHANGELOG-LATEST.md
 
       - name: get dashed package version for netlify
-        run: echo ::set-output name=VERSION::$(node -e "process.stdout.write(require('./package.json').version.split('.').join('-'))")
+        run: echo "VERSION=$(node -e "process.stdout.write(require('./package.json').version.split('.').join('-'))")" >> $GITHUB_OUTPUT
         id: get-version
         shell: bash
         if: env.NETLIFY_BASE != ''
@@ -76,13 +80,13 @@ jobs:
       S3_KEY: ${{ secrets.AWS_S3_KEY }}
     steps:
       - name: setup node
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v3
 
       - name: npm install video.js
         run: npm install "video.js@$VJS_VERSION"
 
       - name: Configure AWS Credentials
-        uses: aws-actions/configure-aws-credentials@v1
+        uses: aws-actions/configure-aws-credentials@v2
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_S3_SECRET }}
@@ -90,4 +94,4 @@ jobs:
 
       - name: Copy files to the CDN with the AWS CLI
         run: |
-          aws s3 sync node_modules/video.js/dist/ s3://${S3_BUCKET}/${S3_KEY}/${VJS_VERSION}/ --acl ${S3_ACCESS}
+          aws s3 cp node_modules/video.js/dist s3://${S3_BUCKET}/${S3_KEY}/${VJS_VERSION}/ --acl ${S3_ACCESS} --recursive
