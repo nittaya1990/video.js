@@ -3,6 +3,8 @@
  */
 import TrackList from './track-list';
 
+/** @import TextTrack from './text-track' */
+
 /**
  * The current list of {@link TextTrack} for a media file.
  *
@@ -53,6 +55,16 @@ class TextTrackList extends TrackList {
         rtrack.removeEventListener('modechange', this.triggerSelectedlanguagechange_);
       }
     }
+  }
+
+  /**
+   * Creates a serializable array of objects that contains serialized copies
+   * of each text track.
+   *
+   * @return {Object[]} A serializable list of objects for the text track list
+   */
+  toJSON() {
+    return this.tracks_.map((track) => track.toJSON());
   }
 }
 export default TextTrackList;

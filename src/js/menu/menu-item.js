@@ -3,10 +3,9 @@
  */
 import ClickableComponent from '../clickable-component.js';
 import Component from '../component.js';
-import {assign} from '../utils/obj';
-import {MenuKeys} from './menu-keys.js';
-import keycode from 'keycode';
 import {createEl} from '../utils/dom.js';
+
+/** @import Player from '../player' */
 
 /**
  * The component for a menu item. `<li>`
@@ -64,16 +63,23 @@ class MenuItem extends ClickableComponent {
     // The control is textual, not just an icon
     this.nonIconControl = true;
 
-    const el = super.createEl('li', assign({
+    const el = super.createEl('li', Object.assign({
       className: 'vjs-menu-item',
       tabIndex: -1
     }, props), attrs);
 
     // swap icon with menu item text.
-    el.replaceChild(createEl('span', {
+    const menuItemEl = createEl('span', {
       className: 'vjs-menu-item-text',
       textContent: this.localize(this.options_.label)
-    }), el.querySelector('.vjs-icon-placeholder'));
+    });
+
+    // If using SVG icons, the element with vjs-icon-placeholder will be added separately.
+    if (this.player_.options_.experimentalSvgIcons) {
+      el.appendChild(menuItemEl);
+    } else {
+      el.replaceChild(menuItemEl, el.querySelector('.vjs-icon-placeholder'));
+    }
 
     return el;
   }
@@ -82,13 +88,13 @@ class MenuItem extends ClickableComponent {
    * Ignore keys which are used by the menu, but pass any other ones up. See
    * {@link ClickableComponent#handleKeyDown} for instances where this is called.
    *
-   * @param {EventTarget~Event} event
+   * @param {KeyboardEvent} event
    *        The `keydown` event that caused this function to be called.
    *
    * @listens keydown
    */
   handleKeyDown(event) {
-    if (!MenuKeys.some((key) => keycode.isEventKey(event, key))) {
+    if (!['Tab', 'Escape', 'ArrowUp', 'ArrowLeft', 'ArrowRight', 'ArrowDown'].includes(event.key)) {
       // Pass keydown handling up for unused keys
       super.handleKeyDown(event);
     }
@@ -98,7 +104,7 @@ class MenuItem extends ClickableComponent {
    * Any click on a `MenuItem` puts it into the selected state.
    * See {@link ClickableComponent#handleClick} for instances where this is called.
    *
-   * @param {EventTarget~Event} event
+   * @param {Event} event
    *        The `keydown`, `tap`, or `click` event that caused this function to be
    *        called.
    *

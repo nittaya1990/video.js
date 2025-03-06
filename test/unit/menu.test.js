@@ -7,6 +7,8 @@ import MenuItem from '../../src/js/menu/menu-item.js';
 import TestHelpers from './test-helpers.js';
 import * as Events from '../../src/js/utils/events.js';
 import sinon from 'sinon';
+import window from 'global/window';
+import document from 'global/document';
 
 QUnit.module('MenuButton');
 
@@ -139,6 +141,50 @@ QUnit.test('should keep all the added menu items', function(assert) {
   MenuButton.prototype.createItems = oldCreateItems;
 });
 
+QUnit.test('should add or remove role menu for accessibility purpose', function(assert) {
+  const player = TestHelpers.makePlayer();
+  const menuButton = new MenuButton(player);
+
+  menuButton.createItems = () => [];
+  menuButton.update();
+  assert.equal(menuButton.menu.contentEl_.hasAttribute('role'), false, 'the menu does not have a role attribute when it contains no menu items');
+
+  menuButton.createItems = () => [new MenuItem(player, { label: 'menu-item' })];
+  menuButton.update();
+  assert.equal(menuButton.menu.contentEl_.hasAttribute('role'), true, 'the menu has a role attribute when it contains menu items');
+  assert.strictEqual(menuButton.menu.contentEl_.getAttribute('role'), 'menu', 'the menu role is `menu`');
+
+  menuButton.dispose();
+  player.dispose();
+});
+
+QUnit.test('setIcon should apply a child to the Button component', function(assert) {
+  // Stub a successful parsing of the SVG sprite.
+  sinon.stub(window.DOMParser.prototype, 'parseFromString').returns({
+    querySelector: () => false,
+    documentElement: document.createElement('span')
+  });
+
+  const player = TestHelpers.makePlayer({experimentalSvgIcons: true});
+  const menuButton = new MenuButton(player);
+
+  menuButton.createItems = () => [];
+  menuButton.update();
+
+  menuButton.setIcon('test');
+
+  const buttonEl = menuButton.menuButton_.el_;
+  const spanEl = buttonEl.getElementsByClassName('vjs-svg-icon')[0];
+  const svgEl = spanEl.childNodes[0];
+  const useEl = svgEl.childNodes[0];
+
+  assert.equal(useEl.getAttribute('href'), '#vjs-icon-test', 'use should have an href set with the correct icon url');
+
+  window.DOMParser.prototype.parseFromString.restore();
+  menuButton.dispose();
+  player.dispose();
+});
+
 QUnit.test('should remove old event listeners when the menu item adds to the new menu', function(assert) {
   const player = TestHelpers.makePlayer();
   const menuButton = new MenuButton(player, {});
@@ -189,7 +235,7 @@ QUnit.test('should remove old event listeners when the menu item adds to the new
 
     assert.ok(clickListenerSpy.calledOnce, 'click event listener should be called');
     assert.strictEqual(clickListenerSpy.getCall(0).args[0].target, menuItem.el(), 'event target should be the `menuItem`');
-    assert.ok(unpressButtonSpy.calledOnce, '`menuButton`.`unpressButtion` has been called');
+    assert.ok(unpressButtonSpy.calledOnce, '`menuButton`.`unpressButton` has been called');
     assert.ok(focusSpy.calledOnce, '`menuButton`.`focus` has been called');
 
     unpressButtonSpy.restore();
@@ -218,4 +264,22 @@ QUnit.test('should remove old event listeners when the menu item adds to the new
   newMenu.dispose();
   oldMenu.dispose();
   menuButton.dispose();
+});
+
+QUnit.test('Escape should close menu', function(assert) {
+  const player = TestHelpers.makePlayer();
+  const menuButton = new MenuButton(player, {});
+  const unpressButtonSpy = sinon.spy(menuButton, 'unpressButton');
+
+  menuButton.createItems = () => [new MenuItem(player, {})];
+  menuButton.update();
+  menuButton.handleClick(new window.PointerEvent('click'));
+  menuButton.menu.children()[0].el_.dispatchEvent(new window.KeyboardEvent('keydown', {
+    key: 'Escape',
+    bubbles: true,
+    cancelable: true
+  }));
+
+  assert.ok(unpressButtonSpy.calledOnce, '`menuButton`.`unpressButton` has been called');
+
 });

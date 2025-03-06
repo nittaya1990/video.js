@@ -5,6 +5,8 @@
  * @module text-track-list-converter
  */
 
+/** @import Tech from '../tech/tech' */
+
 /**
  * Examine a single {@link TextTrack} and return a JSON-compatible javascript object that
  * represents the {@link TextTrack}'s state.
@@ -16,7 +18,7 @@
  *         A serializable javascript representation of the TextTrack.
  * @private
  */
-const trackToJson_ = function(track) {
+const trackToJson = function(track) {
   const ret = [
     'kind', 'label', 'language', 'id',
     'inBandMetadataTrackDispatchType', 'mode', 'src'
@@ -59,7 +61,7 @@ const textTracksToJson = function(tech) {
 
   const trackObjs = Array.prototype.map.call(trackEls, (t) => t.track);
   const tracks = Array.prototype.map.call(trackEls, function(trackEl) {
-    const json = trackToJson_(trackEl.track);
+    const json = trackToJson(trackEl.track);
 
     if (trackEl.src) {
       json.src = trackEl.src;
@@ -69,7 +71,7 @@ const textTracksToJson = function(tech) {
 
   return tracks.concat(Array.prototype.filter.call(tech.textTracks(), function(track) {
     return trackObjs.indexOf(track) === -1;
-  }).map(trackToJson_));
+  }).map(trackToJson));
 };
 
 /**
@@ -95,4 +97,4 @@ const jsonToTextTracks = function(json, tech) {
   return tech.textTracks();
 };
 
-export default {textTracksToJson, jsonToTextTracks, trackToJson_};
+export default {textTracksToJson, jsonToTextTracks, trackToJson};

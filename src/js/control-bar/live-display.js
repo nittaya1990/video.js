@@ -5,6 +5,8 @@ import Component from '../component';
 import * as Dom from '../utils/dom.js';
 import document from 'global/document';
 
+/** @import Player from './player' */
+
 // TODO - Future make it click to snap to live
 
 /**
@@ -67,7 +69,7 @@ class LiveDisplay extends Component {
    * Check the duration to see if the LiveDisplay should be showing or not. Then show/hide
    * it accordingly
    *
-   * @param {EventTarget~Event} [event]
+   * @param {Event} [event]
    *        The {@link Player#durationchange} event that caused this function to run.
    *
    * @listens Player#durationchange
